@@ -98,6 +98,8 @@ def checkRec(tri, shapes):
 	"""
 	check for Dadd Duan recursive gadget
 	"""
+	found_combinatorial = False
+	combin_at = []
 	for face in tri.triangles():
 		embed0 = face.embedding(0)
 		tet0 = embed0.simplex()
@@ -115,21 +117,37 @@ def checkRec(tri, shapes):
 		ag1 = tet0.adjacentGluing(v0[1])
 		ag2 = tet0.adjacentGluing(v0[2])
 
+		same_shape = float(abs(shapes[tet_num0] - shapes[tet_num1])) < 0.00001
+		small_shape = shapes[tet_num0].real() < 1
+
 	    # check the other faces
 		if tet0.adjacentTetrahedron(v0[0]).index() == tet_num1 and (ag0[v0[3]] == v1[0] and ag0[v0[1]] == v1[3] and ag0[v0[2]] == v1[2]):
 	    	#GOOD PLACE
-			if abs(shapes[tet_num0] - shapes[tet_num1]) < 0.00001 and shapes[tet_num0].real() < 1:
-				return (True, tet_num0, tet_num1)
+			if same_shape and small_shape:
+					return (True, tet_num0, tet_num1)
+			else:
+				found_combinatorial = True
+				combin_at.append((tet_num0, tet_num1))
 		if tet0.adjacentTetrahedron(v0[2]).index() == tet_num1 and (ag2[v0[3]] == v1[2] and ag2[v0[0]] == v1[3] and ag2[v0[1]] == v1[1]):
 	    	#GOOD PLACE
-			if abs(shapes[tet_num0] - shapes[tet_num1]) < 0.00001 and shapes[tet_num0].real() < 1:
-				return (True, tet_num0, tet_num1)
+			if same_shape and small_shape:
+					return (True, tet_num0, tet_num1)
+			else:
+				found_combinatorial = True
+				combin_at.append((tet_num0, tet_num1))
 		if tet0.adjacentTetrahedron(v0[1]).index() == tet_num1 and (ag1[v0[3]] == v1[1] and ag1[v0[2]] == v1[3] and ag1[v0[0]] == v1[0]):
 			#GOOD PLACE
-			if abs(shapes[tet_num0] - shapes[tet_num1]) < 0.00001 and shapes[tet_num0].real() < 1:
-				return (True, tet_num0, tet_num1)
+			if same_shape and small_shape:
+					return (True, tet_num0, tet_num1)
+			else:
+				found_combinatorial = True
+				combin_at.append((tet_num0, tet_num1))
 
-
+	if found_combinatorial:
+		print("|||||> Found rec gadget combinatorial rec gadget but not other conditions! <|||||")
+		f = open("recCounterExample.txt", "a")
+		f.write(tri.isoSig() + f' | Same Shape: {same_shape} | Small Shape: {small_shape} | {combin_at} | {shapes} \n')
+		f.close()
 	return (False, -1, -1)
 
 def searchForRec(sig, depth):
@@ -158,9 +176,10 @@ def searchForRec(sig, depth):
 		shapes2 = shapes.copy()
 
 		if dim == 1:
-			res = gm.threeTwoMove(S, shapes2, i)
-			if res:
-				success, newT, newShapes, geom = res
+			# res = gm.threeTwoMove(S, shapes2, i)
+			# if res:
+			# 	success, newT, newShapes, geom = res
+			pass
 		else:
 			success, newT, newShapes, geom = gm.twoThreeMove(S, shapes2, i)
 
@@ -178,10 +197,10 @@ def searchForRec(sig, depth):
 				geometric.append(newSig)
 				# add all face to TODO
 				TODO.extend([(newT, newShapes, i, 2) for i in range(newT.countTriangles())])
-				for i in range(newT.countEdges()):
-					if newT.edges()[i].degree() == 3:
-						#add degree 3 edges to TODO
-						TODO.append((newT, newShapes, i, 1))
+				# for i in range(newT.countEdges()):
+				# 	if newT.edges()[i].degree() == 3:
+				# 		#add degree 3 edges to TODO
+				# 		TODO.append((newT, newShapes, i, 1))
 
 
 		else:
@@ -201,11 +220,12 @@ def searchForRec(sig, depth):
 	print(f'Number of non-geometric triangulations: {len(nongeometric)}')
 	print(f'Checked {len(geometric) + len(nongeometric)} triangulations in {round(time.time() - t0, 2)} seconds.')
 	t1 = time.time()
+	print(geometric)
 	return (False, -1, -1, -1)
 
 def bigSearchRec(n, depth):
 	for i in range(n):
-		m = snappy.CensusKnots[i]
+		m = snappy.OrientableCuspedCensus[i]
 		sig = m.triangulation_isosig(decorated=False)
 		found, t1, t2, searched = searchForRec(sig, depth)
 		if found:
@@ -214,12 +234,12 @@ def bigSearchRec(n, depth):
 			T = regina.Triangulation3.fromIsoSig(found)
 			S = regina.Triangulation3.fromIsoSig(sig)
 			height = T.countTetrahedra() - S.countTetrahedra()
-			f = open("infinitely_many_geo_knots.txt", "a")
+			f = open("test.txt", "a")
 			f.write(found + f', tet1: {t1}, tet2: {t2}, searched: {searched}, height: {height}' + '\n')
 			f.close()
 		else:
 			print("Nothing found.")
-			f = open("not_infinitely_many_geo_knots.txt", "a")
+			f = open("nontest.txt", "a")
 			f.write(sig + '\n')
 			f.close()
 		print(f'{i}----------------------------------------------')

@@ -357,6 +357,7 @@ def threeTwoMove(tri, shapes, edge_num):
     assert tri.isIsomorphicTo(tri2)
     assert tri.isOriented()
 
+    # DEBUG
     
 
     ### update shapes
@@ -364,7 +365,10 @@ def threeTwoMove(tri, shapes, edge_num):
     z = shapes[tet_nums[1]]
     w = shapes[tet_nums[2]]
     new_shape0 = edgeParameter(vertices[0][1], vertices[0][3], u) * edgeParameter(vertices[1][1], vertices[1][2], z)
-    new_shape1 = edgeParameter(vertices[0][0], vertices[0][2], u) * edgeParameter(vertices[2][0], vertices[2][3], w)
+    new_shape1 = edgeParameter(vertices[0][0], vertices[0][2], u) * edgeParameter(vertices[2][0], vertices[2][3], w) 
+
+    #for some reason, new_shape1 needs to be z-primed
+    new_shape1 = 1/(1-new_shape1)
 
     tet_nums.sort()
     shapes.pop(tet_nums[2])

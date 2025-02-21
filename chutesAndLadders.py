@@ -69,9 +69,10 @@ def pseudoGeometricSearch(sig, MAX_DEPTH):
 				else:
 					nongeometric.append(newSig)
 					nonTODO.extend([(newT, i,2) for i in range(newT.countTriangles())])
-					if newT.edges()[i].degree() == 3:
-						#add degree 3 edges to TODO
-						nonTODO.append((newT, i, 1))
+					for i in range(newT.countEdges()):
+						if newT.edges()[i].degree() == 3:
+							#add degree 3 edges to TODO
+							nonTODO.append((newT, i, 1))
 
 		else: # if no more geometric to check ("force forward")
 			S, i, f = nonTODO[0]
