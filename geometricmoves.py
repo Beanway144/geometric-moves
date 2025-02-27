@@ -1,5 +1,5 @@
 import regina
-
+from sage.all import QQbar
 
 def edgeParameter(v1, v2, z):
 	"""
@@ -19,9 +19,8 @@ def edgeParameter(v1, v2, z):
 			return (z - 1) / z
 
 def allPositiveOriented(shapes):
-	epsilon = 0.000001 # is this reasonable? probably want to switch to field comp anyway
 	for s in shapes:
-		if float(s.imag()) < epsilon or float((1/(1-s)).imag()) < epsilon or float(((s-1)/s).imag()) < epsilon:
+		if QQbar(s).imag() <= 0:
 			return False
 	return True
 
@@ -222,7 +221,7 @@ def threeTwoMove(tri, shapes, edge_num):
 
     edge = tri.edge(edge_num)
     if edge.degree() != 3:
-        return False
+        return (False, False, False, False)
 
     tets = []
     tet_nums = []
@@ -234,7 +233,7 @@ def threeTwoMove(tri, shapes, edge_num):
         vertices.append(embed.vertices())
 
     if len(set([tet.index() for tet in tets])) != 3: 
-        return False  ### tetrahedra must be distinct
+        return (False, False, False, False)  ### tetrahedra must be distinct
      
     ### check we do the same as regina... 
     tri2 = regina.Triangulation3(tri)  ## make a copy
@@ -357,9 +356,6 @@ def threeTwoMove(tri, shapes, edge_num):
     assert tri.isIsomorphicTo(tri2)
     assert tri.isOriented()
 
-    # DEBUG
-    
-
     ### update shapes
     u = shapes[tet_nums[0]]
     z = shapes[tet_nums[1]]
@@ -368,7 +364,7 @@ def threeTwoMove(tri, shapes, edge_num):
     new_shape1 = edgeParameter(vertices[0][0], vertices[0][2], u) * edgeParameter(vertices[2][0], vertices[2][3], w) 
 
     #for some reason, new_shape1 needs to be z-primed
-    new_shape1 = 1/(1-new_shape1)
+    # new_shape1 = 1/(1-new_shape1)
 
     tet_nums.sort()
     shapes.pop(tet_nums[2])

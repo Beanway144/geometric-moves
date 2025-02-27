@@ -1,15 +1,17 @@
 import regina, snappy
 import geometricmoves as gm
 import time
+from sage.all import QQbar
 
-VERIFY = True
 
-def geometricSearch(sig, depth):
+def geometricSearch(sig, max_tets, verify=False, verbose=True, census=False):
 	"""
 	Perform geometric pachner moves until no longer possible
 	Assumes sig is geometric
+	Doesn't search above max_tets (depth of search)
 	"""
-	print(f"Searching {sig}")
+	if verbose:
+		print(f"Searching {sig}...")
 	t0 = time.time()
 
 	
@@ -17,74 +19,77 @@ def geometricSearch(sig, depth):
 	T = regina.Triangulation3.fromIsoSig(sig)
 	T.orient()
 	M = snappy.Manifold(T)
+
+	L = M.tetrahedra_field_gens()
+	shapes = L.find_field(100,10)[2]
 	
-	shapes = M.tetrahedra_shapes(part='rect')
+	# shapes = M.tetrahedra_shapes(part='rect')
 
 	geometric = [sig]
+	geomshapes = [shapes] # throw shapes in here, indexed same as geometric
 	nongeometric = []
 
-	searched = depth
+	# TODO : [ (Triangulation, [Shapes], index, dimension) ]
+	TODO = [(T, shapes, i, 2) for i in range(T.countTriangles())] + [(T, shapes, i, 1) for i in range(T.countEdges())]
 
-	TODO = [(T, shapes, i) for i in range(T.countTriangles())]
-	while len(TODO) > 0 and searched > 0:
-		T, shapes, f = TODO[0]
-		TODO = TODO[1:]
-		searched -= 1
+	while len(TODO) > 0:
+		T, shapes, i, d = TODO.pop(0)
 
 		# always work on a copy
 		S = regina.Triangulation3(T)
 		shapes2 = shapes.copy()
 
-		success, newT, newShapes, geom = gm.twoThreeMove(S, shapes2, f)
-		if not success:
-			continue
+		if d == 1: # 3-2 move
+			success, newT, newShapes, geom = gm.threeTwoMove(S, shapes2, i)
 
-		newSig = newT.isoSig()
-		if geom:
-			if newSig in geometric:
-				continue
+		elif d == 2: # 2-3 move
+			success, newT, newShapes, geom = gm.twoThreeMove(S, shapes2, i)
+
+		if success:
+			newSig = newT.isoSig()
+			if geom:
+				if not newSig in geometric: #if we haven't seen it before
+					geometric.append(newSig)
+					if census:
+						f = open(f'{sig}.txt', "a")
+						f.write(f'[{newSig}], {newShapes}\n')
+						f.close()
+					geomshapes.append(newShapes)
+					TODO.extend([(newT, newShapes, j, 1) for j in range(newT.countEdges())])
+					if newT.countTetrahedra() < max_tets: # don't go up if you're at max tetrahedra
+						TODO.extend([(newT, newShapes, j, 2) for j in range(newT.countTriangles())])
 			else:
-				geometric.append(newSig)
-				TODO.extend([(newT, newShapes, i) for i in range(newT.countTriangles())])
-		else:
-			if newSig in nongeometric:
-				continue
-			else:
-				nongeometric.append(newSig)
-
-	if len(TODO) == 0:
-		print("Geometric base component is finite")
-		f = open("finite_geometric_base_comp2.txt", "a")
-		f.write(sig + '\n')
-		f.close()
-	if searched == 0:
-		print(f"HIT CAP, checked ~{depth}")
-		f = open("many_geometric2.txt", "a")
-		f.write(sig + '\n')
-		f.close()
-		
-
-	# print(f'Geometric: {geometric}')
-	# print(f'Nongeometric: {nongeometric}')
-
-	print(f'Number of geometric triangulations: {len(geometric)}')
-	print(f'Number of non-geometric triangulations: {len(nongeometric)}')
-	print(f'Checked {len(geometric) + len(nongeometric)} triangulations in {round(time.time() - t0, 2)} seconds.')
+				if not newSig in nongeometric: #if we haven't seen it before
+					nongeometric.append(newSig)
+						
+	if verbose:
+		print(f'Number of geometric triangulations: {len(geometric)}')
+		print(f'Number of non-geometric triangulations: {len(nongeometric)}')
+		print(f'Total: {len(geometric) + len(nongeometric)} triangulations in {round(time.time() - t0, 2)} seconds.')
 	t1 = time.time()
-	if VERIFY:
-		print("verifying...")
 
-		for t in geometric:
+	if verify: #verify that geometric are geometric, non are non
+		print("Verifying geometric...")
+
+		for i in range(len(geometric)):
+			t = geometric[i]
 			M = snappy.Manifold(t)
-			if not M.verify_hyperbolicity()[0]:
-				print(f"Geometric not actually geometric: {M.triangulation_isosig()}")
-		print("done verifying geometric...")
+			tf, shapes = M.verify_hyperbolicity()
+			L = M.tetrahedra_field_gens()
+			shapes = L.find_field(100,10)[2]
+			# pp_copmare_shapes(shapes, geomshapes[i])
+			if not tf:
+				print(f"Geometric not actually geometric: {M.triangulation_isosig(decorated=False)}")
+				assert False
+		print("Done verifying geometric. Verifying nongeometric...")
 		for t in nongeometric:
 			M = snappy.Manifold(t)
 			if M.verify_hyperbolicity()[0]:
 				print(f"Nongeometric actually geometric: {M.triangulation_isosig(decorated=False)}")
+				assert False
 		print(f"Done! Verified {len(geometric) + len(nongeometric)} triangulations in {round(time.time() - t1, 2)} seconds.")
 	return geometric
+
 
 def bigSearch(n, depth):
 	for i in range(n):
@@ -117,8 +122,8 @@ def checkRec(tri, shapes):
 		ag1 = tet0.adjacentGluing(v0[1])
 		ag2 = tet0.adjacentGluing(v0[2])
 
-		same_shape = float(abs(shapes[tet_num0] - shapes[tet_num1])) < 0.00001
-		small_shape = shapes[tet_num0].real() < 1
+		same_shape = shapes[tet_num0] == shapes[tet_num1]
+		small_shape = QQbar(shapes[tet_num0]).real() < 1
 
 	    # check the other faces
 		if tet0.adjacentTetrahedron(v0[0]).index() == tet_num1 and (ag0[v0[3]] == v1[0] and ag0[v0[1]] == v1[3] and ag0[v0[2]] == v1[2]):
@@ -150,98 +155,104 @@ def checkRec(tri, shapes):
 		f.close()
 	return (False, -1, -1)
 
-def searchForRec(sig, depth):
-	print(f"Searching {sig}")
+def recSearch(sig, max_tets, verbose=True):
+	"""
+	Searches geometric Pachner tree (like geometric search above)
+	and checks for Dadd-Duan Recursion Gadget
+	Returns (gadget found : bool, gadget tet 1, gadget tet 2, triangulations checked)
+	"""
+	if verbose:
+		print(f"Searching {sig}...")
 	t0 = time.time()
 
-	geometric = [sig]
-	nongeometric = []
 
 	T = regina.Triangulation3.fromIsoSig(sig)
 	T.orient()
 	M = snappy.Manifold(T)
+	
+	L = M.tetrahedra_field_gens()
+	shapes = L.find_field(100,10)[2]
 
-	shapes = M.tetrahedra_shapes(part='rect')
+	geometric = [sig]
+	nongeometric = []
 
-	searched = depth
-    # 1 = edge, 2 = face
-	TODO = [(T, shapes, i, 2) for i in range(T.countTriangles())]
-	while len(TODO) > 0 and searched > 0:
-		T, shapes, i, dim = TODO[0]
-		TODO = TODO[1:]
-		searched -= 1
+	tf, t1, t2 = checkRec(T, shapes)
+	if tf:
+		return sig, t1, t2, len(geometric) + len(nongeometric)
+
+	# TODO : [ (Triangulation, [Shapes], index, dimension) ]
+	TODO = [(T, shapes, i, 2) for i in range(T.countTriangles())] + [(T, shapes, i, 1) for i in range(T.countEdges())]
+
+	while len(TODO) > 0:
+		T, shapes, i, d = TODO.pop(0)
 
 		# always work on a copy
 		S = regina.Triangulation3(T)
 		shapes2 = shapes.copy()
 
-		if dim == 1:
-			# res = gm.threeTwoMove(S, shapes2, i)
-			# if res:
-			# 	success, newT, newShapes, geom = res
-			pass
-		else:
+		if d == 1: # 3-2 move
+			success, newT, newShapes, geom = gm.threeTwoMove(S, shapes2, i)
+		elif d == 2: # 2-3 move
 			success, newT, newShapes, geom = gm.twoThreeMove(S, shapes2, i)
 
-		if not success:
-			continue
+		if success:
+			newSig = newT.isoSig()
+			if geom:
+				if not newSig in geometric: #if we haven't seen it before
+					geometric.append(newSig)
+					# Check for recursion gadget,
+					tf, t1, t2 = checkRec(newT, newShapes)
+					if tf:
+						N = snappy.Manifold(newT)
+						if N.verify_hyperbolicity()[0]: #VERIFY RETURN IS ACTUALLY GEOMETRIC
+							return newSig, t1, t2, len(geometric) + len(nongeometric)
+						else:
+							print("ERROR: tried to return geometric thing that was not geometric")
 
-		newSig = newT.isoSig()
-		if geom:
-			if newSig in geometric:
-				continue
+					TODO.extend([(newT, newShapes, j, 1) for j in range(newT.countEdges())])
+					if newT.countTetrahedra() < max_tets: # don't go up if you're at max tetrahedra
+						TODO.extend([(newT, newShapes, j, 2) for j in range(newT.countTriangles())])
 			else:
-				recFound, t1, t2 = checkRec(newT, newShapes)
-				if recFound:
-					return (newT.isoSig(), t1, t2, depth - searched)
-				geometric.append(newSig)
-				# add all face to TODO
-				TODO.extend([(newT, newShapes, i, 2) for i in range(newT.countTriangles())])
-				# for i in range(newT.countEdges()):
-				# 	if newT.edges()[i].degree() == 3:
-				# 		#add degree 3 edges to TODO
-				# 		TODO.append((newT, newShapes, i, 1))
+				if not newSig in nongeometric: #if we haven't seen it before
+					nongeometric.append(newSig)
+						
+	if verbose:
+		print(f"Failed to find DD-Gadget.")
+		print(f'Number of geometric triangulations: {len(geometric)}')
+		print(f'Number of non-geometric triangulations: {len(nongeometric)}')
+		print(f'Total: {len(geometric) + len(nongeometric)} triangulations in {round(time.time() - t0, 2)} seconds.')
 
-
-		else:
-			if newSig in nongeometric:
-				continue
-			else:
-				nongeometric.append(newSig)
-
-	if len(TODO) == 0:
-		print("Hit dead end: no more geometric triangulations")
-		
-	if searched == 0:
-		print(f"HIT CAP, checked ~{depth}")
-				
-
-	print(f'Number of geometric triangulations: {len(geometric)}')
-	print(f'Number of non-geometric triangulations: {len(nongeometric)}')
-	print(f'Checked {len(geometric) + len(nongeometric)} triangulations in {round(time.time() - t0, 2)} seconds.')
-	t1 = time.time()
-	print(geometric)
+	
 	return (False, -1, -1, -1)
 
-def bigSearchRec(n, depth):
+def bigSearchRec(n, depth, file):
+	f = open(file, "a")
+	f.write(f'This is a census of manifolds in the first {n} of SnapPy\'s Cusped Orientable Census which has some triangulation that contains the Dadd-Duan Recursion Gadget. Only triangulations geometrically connected in the Pachner graph to the census triangulation are checked, and only up to a max number of {depth} tetrahedra.')
+	f.close()
 	for i in range(n):
-		m = snappy.OrientableCuspedCensus[i]
-		sig = m.triangulation_isosig(decorated=False)
-		found, t1, t2, searched = searchForRec(sig, depth)
+		M = snappy.OrientableCuspedCensus[i]
+		sig = M.triangulation_isosig(decorated=False)
+		found, t1, t2, searched = recSearch(sig, depth)
 		if found:
 			print("[~] Recursion gadget found! [~]")
 			print(f"[~] After {searched} triangulations. [~]")
 			T = regina.Triangulation3.fromIsoSig(found)
 			S = regina.Triangulation3.fromIsoSig(sig)
 			height = T.countTetrahedra() - S.countTetrahedra()
-			f = open("test.txt", "a")
-			f.write(found + f', tet1: {t1}, tet2: {t2}, searched: {searched}, height: {height}' + '\n')
+			f = open(file, "a")
+			f.write(f'[Census Manifold {i}]: ' + found + f', tet1: {t1}, tet2: {t2}, searched: {searched}, height: {height}' + '\n')
 			f.close()
 		else:
 			print("Nothing found.")
-			f = open("nontest.txt", "a")
-			f.write(sig + '\n')
-			f.close()
 		print(f'{i}----------------------------------------------')
 
+def pp_copmare_shapes(shapes1, shapes2):
+	print('--------------------------------------------')
+	if len(shapes1) != len(shapes2):
+		print('Error: Shape lists not same length!')
+	for i in range(len(shapes1)):
+		a = shapes1[i]
+		b = shapes2[i]
+		print(f'{a} <||> {b}')
+	print('--------------------------------------------')
 

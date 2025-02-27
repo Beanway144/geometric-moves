@@ -8,11 +8,10 @@ This is a repository of scripts that search through geometric triangulations of 
 
 
 # TODO
-1. Change "depth" to proper tetrahedra height
-2. Move to algebraic moves
 3. Run census
 
 # Census and Things to Look For
+- Large collections of geometric triangulations
 - Census of DD Recursion Gadget
 - Database of geometrically isolated triangulations
 - Q: Are there any pseudo-geometrically isolated triangulations? (no flat moves)
