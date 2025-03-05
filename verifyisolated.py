@@ -25,3 +25,19 @@ def verifyIsolated(sig):
 			return False
 
 	return True
+
+def showLocalMoves(sig):
+	print('Possible 2-3 Moves:')
+	M = snappy.Manifold(sig)
+	T = regina.Triangulation3(M)
+	for i in range(T.countTriangles()):
+		S = regina.Triangulation3(T)
+		if S.pachner(S.triangle(i), True, False): #dumb
+			S.pachner(S.triangle(i), False, True)
+			N = snappy.Manifold(T)
+			if N.verify_hyperbolicity()[0]:
+				print(f'Face {i} [{S.isoSig()}]: Geometric')
+			else:
+				print(f'Face {i} [{S.isoSig()}]: Not Geometric')
+		else:
+			print(f'Face {i} [{S.isoSig()}]: Not Possible')

@@ -20,10 +20,10 @@ def geometricSearch(sig, max_tets, verify=False, verbose=True, census=False):
 	T.orient()
 	M = snappy.Manifold(T)
 
+	### field may not be found
 	L = M.tetrahedra_field_gens()
 	shapes = L.find_field(100,10)[2]
 	
-	# shapes = M.tetrahedra_shapes(part='rect')
 
 	geometric = [sig]
 	geomshapes = [shapes] # throw shapes in here, indexed same as geometric
@@ -40,14 +40,14 @@ def geometricSearch(sig, max_tets, verify=False, verbose=True, census=False):
 		shapes2 = shapes.copy()
 
 		if d == 1: # 3-2 move
-			success, newT, newShapes, geom = gm.threeTwoMove(S, shapes2, i)
+			success, newT, newShapes, oriented = gm.threeTwoMove(S, shapes2, i)
 
 		elif d == 2: # 2-3 move
-			success, newT, newShapes, geom = gm.twoThreeMove(S, shapes2, i)
+			success, newT, newShapes, oriented = gm.twoThreeMove(S, shapes2, i)
 
 		if success:
 			newSig = newT.isoSig()
-			if geom:
+			if oriented == 1:
 				if not newSig in geometric: #if we haven't seen it before
 					geometric.append(newSig)
 					if census:
@@ -89,6 +89,84 @@ def geometricSearch(sig, max_tets, verify=False, verbose=True, census=False):
 				assert False
 		print(f"Done! Verified {len(geometric) + len(nongeometric)} triangulations in {round(time.time() - t1, 2)} seconds.")
 	return geometric
+
+def graphGeometricSearch(sig, max_tets, verbose=True, geometric_only=False):
+	"""
+	Perform geometric pachner moves until no longer possible
+	Assumes sig is geometric
+	Doesn't search above max_tets (depth of search)
+	makes a graph along the way, csv format for gephi
+	- Recording geometric and non
+	"""
+	if verbose:
+		print(f"Searching {sig}...")
+	t0 = time.time()
+
+	
+
+	T = regina.Triangulation3.fromIsoSig(sig)
+	T.orient()
+	M = snappy.Manifold(T)
+
+	### field may not be found -- to fix later
+	L = M.tetrahedra_field_gens()
+	shapes = L.find_field(100,10)[2]
+	
+
+	geometric = [sig]
+	nongeometric = []
+
+	# TODO : [ (Triangulation, [Shapes], index, dimension) ]
+	TODO = [(T, shapes, i, 2) for i in range(T.countTriangles())] + [(T, shapes, i, 1) for i in range(T.countEdges())]
+
+	while len(TODO) > 0:
+		T, shapes, i, d = TODO.pop(0)
+
+		# always work on a copy
+		S = regina.Triangulation3(T)
+		shapes2 = shapes.copy()
+
+		if d == 1: # 3-2 move
+			success, newT, newShapes, oriented = gm.threeTwoMove(S, shapes2, i)
+
+		elif d == 2: # 2-3 move
+			success, newT, newShapes, oriented = gm.twoThreeMove(S, shapes2, i)
+
+		if success:
+			newSig = newT.isoSig()
+			if oriented > 0: # if geometric
+				if not newSig in geometric: #if we haven't seen it before
+					geometric.append(newSig)
+					TODO.extend([(newT, newShapes, j, 1) for j in range(newT.countEdges())])
+					if newT.countTetrahedra() < max_tets: # don't go up if you're at max tetrahedra
+						TODO.extend([(newT, newShapes, j, 2) for j in range(newT.countTriangles())])
+				else:
+					continue #here is why we don't loop (we are backtracking a little)
+			else: # if not geometric
+				if not newSig in nongeometric: #if we haven't seen it before
+					nongeometric.append(newSig)
+				else:
+					continue
+
+			if geometric_only:
+				if oriented <= 0:
+					continue
+			f = open(f'{sig}-nodes.csv', "a")
+			f.write(f'{newSig},{oriented},{newT.countTetrahedra(),newShapes}\n')
+			f.close()
+			f = open(f'{sig}-edges.csv', "a")
+			f.write(f'{T.isoSig()},{newSig},{'Edge: ' if d==1 else 'Face: '}{i}\n')
+			f.close()
+				
+			
+						
+	if verbose:
+		print(f'Number of geometric triangulations: {len(geometric)}')
+		print(f'Number of non-geometric triangulations: {len(nongeometric)}')
+		print(f'Total: {len(geometric) + len(nongeometric)} triangulations in {round(time.time() - t0, 2)} seconds.')
+
+	return
+
 
 
 def bigSearch(n, depth):
@@ -171,7 +249,12 @@ def recSearch(sig, max_tets, verbose=True):
 	M = snappy.Manifold(T)
 	
 	L = M.tetrahedra_field_gens()
-	shapes = L.find_field(100,10)[2]
+	F = L.find_field(100,10)
+	if F == None:
+		print("Could not find field")
+		return (False, -1, -1, -1)
+
+	shapes = F[2]
 
 	geometric = [sig]
 	nongeometric = []
@@ -255,4 +338,5 @@ def pp_copmare_shapes(shapes1, shapes2):
 		b = shapes2[i]
 		print(f'{a} <||> {b}')
 	print('--------------------------------------------')
+
 

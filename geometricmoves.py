@@ -2,29 +2,42 @@ import regina
 from sage.all import QQbar
 
 def edgeParameter(v1, v2, z):
-	"""
-	Given two vertex indices and edge param of 01, returns edge param
-	between two vertices
-	Convention:
-	01, 23 <---> z	
-	20, 13 <---> 1/(1-z)	
-	21, 03 <---> (z-1)/z
-	"""
-	match (v1, v2):
-		case (0, 1) | (1, 0) | (2 , 3) | (3, 2):
-			return z
-		case (0, 2) | (2, 0) | (1, 3) | (3, 1):
-			return 1 / (1 - z)
-		case (0, 3) | (3, 0) | (1, 2) | (2, 1):
-			return (z - 1) / z
+    """
+    Given two vertex indices and edge param of 01, returns edge param
+    between two vertices
+    Convention:
+    01, 23 <---> z	
+    20, 13 <---> 1/(1-z)	
+    21, 03 <---> (z-1)/z
+    """
+    match (v1, v2):
+        case (0, 1) | (1, 0) | (2 , 3) | (3, 2):
+            return z
+        case (0, 2) | (2, 0) | (1, 3) | (3, 1):
+            return 1 / (1 - z)
+        case (0, 3) | (3, 0) | (1, 2) | (2, 1):
+            return (z - 1) / z
+    raise Exception("edgeParameter invalid")
 
-def allPositiveOriented(shapes):
-	for s in shapes:
-		if QQbar(s).imag() <= 0:
-			return False
-	return True
+def shapeOrientation(shapes):
+    """
+    Given a list of shapes, determines whether they induce a triangulation which is
+    - Geometric (return +1): all shapes have positive imaginary part
+    - Flat (return 0): at least one shape Im z = 0, the rest >= 0
+    - Negatively Oriented (return -1): at least one shape Im z < 0
+    """
+    flat = False
+    for s in shapes:  
+        if QQbar(s).imag() < 0:
+            return -1
+        if QQbar(s).imag() == 0:
+            flat = True
+    if flat:
+        return 0
+    else:
+        return 1
 
-# forked from branch moves - henryseg - veering
+    # forked from branch moves - henryseg - veering
 def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
     """
     Apply a 2-3 move to a triangulation, maintaining geometric structure, if possible. 
@@ -210,7 +223,7 @@ def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
 
     shapes.extend([new_shape0, new_shape1, new_shape2])
 	
-    return (True, tri, shapes, allPositiveOriented([new_shape0, new_shape1, new_shape2]))    
+    return (True, tri, shapes, shapeOrientation([new_shape0, new_shape1, new_shape2]))    
 
 def threeTwoMove(tri, shapes, edge_num):
     """Apply a 3-2 move to a triangulation, maintaining geometric structure, if possible. 
@@ -372,7 +385,7 @@ def threeTwoMove(tri, shapes, edge_num):
     shapes.pop(tet_nums[0])  ## remove from the list in the correct order!
 
     shapes.extend([new_shape0, new_shape1])
-    return (True, tri, shapes, allPositiveOriented([new_shape0, new_shape1]))    
+    return (True, tri, shapes, shapeOrientation([new_shape0, new_shape1]))  
 
 
     
