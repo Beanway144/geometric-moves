@@ -34,7 +34,7 @@ def showLocalMoves(sig):
 		S = regina.Triangulation3(T)
 		if S.pachner(S.triangle(i), True, False): #dumb
 			S.pachner(S.triangle(i), False, True)
-			N = snappy.Manifold(T)
+			N = snappy.Manifold(S)
 			if N.verify_hyperbolicity()[0]:
 				print(f'Face {i} [{S.isoSig()}]: Geometric')
 			else:

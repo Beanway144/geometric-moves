@@ -27,11 +27,17 @@ def shapeOrientation(shapes):
     - Negatively Oriented (return -1): at least one shape Im z < 0
     """
     flat = False
-    for s in shapes:  
-        if QQbar(s).imag() < 0:
-            return -1
-        if QQbar(s).imag() == 0:
-            flat = True
+    for s in shapes: 
+        try: #here to catch if input is floating or algebraic (should change this eventually)
+            if QQbar(s).imag() < 0:
+                return -1
+            if QQbar(s).imag() == 0:
+                flat = True
+        except:
+            if s.imag() < 0:
+                return -1
+            if s.imag() < 0.00000001:
+                flat = True
     if flat:
         return 0
     else:
@@ -222,8 +228,12 @@ def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
         shapes.pop(tet_num0 - 1)
 
     shapes.extend([new_shape0, new_shape1, new_shape2])
+
+    # CHECK FOR INESSENTIAL [shape orientation := -2]
+    if (new_shape0 * new_shape1 == 1) or (new_shape1 * new_shape2 == 1) or (new_shape2 * new_shape0 == 1): 
+        return (True, tri, shapes, -2)
 	
-    return (True, tri, shapes, shapeOrientation([new_shape0, new_shape1, new_shape2]))    
+    return (True, tri, shapes, shapeOrientation(shapes))    
 
 def threeTwoMove(tri, shapes, edge_num):
     """Apply a 3-2 move to a triangulation, maintaining geometric structure, if possible. 
@@ -385,7 +395,7 @@ def threeTwoMove(tri, shapes, edge_num):
     shapes.pop(tet_nums[0])  ## remove from the list in the correct order!
 
     shapes.extend([new_shape0, new_shape1])
-    return (True, tri, shapes, shapeOrientation([new_shape0, new_shape1]))  
+    return (True, tri, shapes, shapeOrientation(shapes))  
 
 
     

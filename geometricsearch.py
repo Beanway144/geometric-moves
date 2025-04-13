@@ -22,7 +22,11 @@ def geometricSearch(sig, max_tets, verify=False, verbose=True, census=False):
 
 	### field may not be found
 	L = M.tetrahedra_field_gens()
-	shapes = L.find_field(100,10)[2]
+	try:
+		shapes = L.find_field(100,10)[2]
+	except:
+		print("Could not find field: falling back to floating point")
+		shapes = M.tetrahedra_shapes(part='rect')
 	
 
 	geometric = [sig]
@@ -98,11 +102,10 @@ def graphGeometricSearch(sig, max_tets, verbose=True, geometric_only=False):
 	makes a graph along the way, csv format for gephi
 	- Recording geometric and non
 	"""
+
 	if verbose:
 		print(f"Searching {sig}...")
 	t0 = time.time()
-
-	
 
 	T = regina.Triangulation3.fromIsoSig(sig)
 	T.orient()
@@ -110,13 +113,24 @@ def graphGeometricSearch(sig, max_tets, verbose=True, geometric_only=False):
 
 	### field may not be found -- to fix later
 	L = M.tetrahedra_field_gens()
-	shapes = L.find_field(100,10)[2]
+	try:
+		shapes = L.find_field(100,10)[2]
+	except:
+		print("Could not find field: falling back to floating point")
+		shapes = M.tetrahedra_shapes(part='rect')
 	
 
 	geometric = [sig]
 	nongeometric = []
 
-	# TODO : [ (Triangulation, [Shapes], index, dimension) ]
+	f = open(f'graphs/{sig}-nodes.csv', "w")
+	f.write(f'id,oriented,tetrahedra\n{sig},1,{T.countTetrahedra()}\n')
+	f.close()
+	f = open(f'graphs/{sig}-edges.csv', "w")
+	# labeling edge with #tet - index to look for repeated patterns!
+	f.write('target,source,label\n')
+	f.close()
+
 	TODO = [(T, shapes, i, 2) for i in range(T.countTriangles())] + [(T, shapes, i, 1) for i in range(T.countEdges())]
 
 	while len(TODO) > 0:
@@ -151,11 +165,12 @@ def graphGeometricSearch(sig, max_tets, verbose=True, geometric_only=False):
 			if geometric_only:
 				if oriented <= 0:
 					continue
-			f = open(f'{sig}-nodes.csv', "a")
-			f.write(f'{newSig},{oriented},{newT.countTetrahedra(),newShapes}\n')
+			f = open(f'graphs/{sig}-nodes.csv', "a")
+			f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
 			f.close()
-			f = open(f'{sig}-edges.csv', "a")
-			f.write(f'{T.isoSig()},{newSig},{'Edge: ' if d==1 else 'Face: '}{i}\n')
+			f = open(f'graphs/{sig}-edges.csv', "a")
+			# labeling edge with #tet - index to look for repeated patterns!
+			f.write(f'{newSig},{T.isoSig()},{'Edge: ' if d==1 else 'Face: '}{T.countTriangles() - i}\n')
 			f.close()
 				
 			
@@ -167,6 +182,210 @@ def graphGeometricSearch(sig, max_tets, verbose=True, geometric_only=False):
 
 	return
 
+def graphEssentialSearch(sig, max_tets, verbose=True, directory='graphs'):
+	"""
+	Perform 'fake geometric' moves, i.e. perform moves while tracking the shape
+	parameters, even if the shape parameters are flat or negatively oriented.
+	Graph output.
+	"""
+
+	if verbose:
+		print(f"Searching {sig}...")
+	t0 = time.time()
+
+	T = regina.Triangulation3.fromIsoSig(sig)
+	T.orient()
+	M = snappy.Manifold(T)
+
+	### field may not be found
+	L = M.tetrahedra_field_gens()
+	try:
+		shapes = L.find_field(100,10)[2]
+	except:
+		print("Could not find field: falling back to floating point")
+		shapes = M.tetrahedra_shapes(part='rect')
+	
+
+	essential = [sig]
+	inessential = []
+	edges = []
+
+	f = open(f'{directory}/{sig}-essential-nodes.csv', "w")
+	f.write(f'id,oriented,tetrahedra\n{sig},1,{T.countTetrahedra()}\n')
+	f.close()
+	f = open(f'{directory}/{sig}-essential-edges.csv', "w")
+	# labeling edge with #tet - index to look for repeated patterns!
+	f.write('target,source,label\n')
+	f.close()
+
+	# TODO : [ (Triangulation, [Shapes], index, dimension) ]
+	TODO = [(T, shapes, i, 2) for i in range(T.countTriangles())] + [(T, shapes, i, 1) for i in range(T.countEdges())]
+
+	while len(TODO) > 0:
+		T, shapes, i, d = TODO.pop(0)
+		Tsig = T.isoSig()
+
+		# always work on a copy
+		S = regina.Triangulation3(T)
+		shapes2 = shapes.copy()
+
+		if d == 1: # 3-2 move
+			success, newT, newShapes, oriented = gm.threeTwoMove(S, shapes2, i)
+
+		elif d == 2: # 2-3 move
+			success, newT, newShapes, oriented = gm.twoThreeMove(S, shapes2, i)
+
+		if success:
+			newSig = newT.isoSig()
+			if oriented > -2: # if essential
+				if not newSig in essential: #if we haven't seen it before
+					# record new triangulation sig
+					essential.append(newSig)
+					edges.append((Tsig, newSig))
+					f = open(f'{directory}/{sig}-essential-nodes.csv', "a")
+					f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
+					f.close()
+
+					# add neighbors to queue
+					TODO.extend([(newT, newShapes, j, 1) for j in range(newT.countEdges())])
+					if newT.countTetrahedra() < max_tets: # don't go up if you're at max tetrahedra
+						TODO.extend([(newT, newShapes, j, 2) for j in range(newT.countTriangles())])
+				else:
+					if (Tsig, newSig) in edges or (newSig, Tsig) in edges: # check so we can record edges later
+						continue #here is why we don't loop (we are backtracking a little)
+					
+			else: # if inessential edge exists
+				if not newSig in inessential: #if we haven't seen it before
+					inessential.append(newSig)
+					edges.append((Tsig, newSig))
+					f = open(f'{directory}/{sig}-essential-nodes.csv', "a")
+					f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
+					f.close()
+				else:
+					if (Tsig, newSig) in edges or (newSig, Tsig) in edges: # check so we can record edges later
+						continue #here is why we don't loop (we are backtracking a little)
+
+			
+			f = open(f'{directory}/{sig}-essential-edges.csv', "a")
+			# labeling edge with #tet - index to look for repeated patterns!
+			f.write(f'{newSig},{T.isoSig()},{'Edge: ' if d==1 else 'Face: '}{T.countTriangles() - i}\n')
+			f.close()
+				
+			
+						
+	if verbose:
+		print(f'Number of essential triangulations: {len(essential)}')
+		print(f'Number of inessential triangulations: {len(inessential)}')
+		print(f'Total: {len(essential) + len(inessential)} triangulations in {round(time.time() - t0, 2)} seconds.')
+
+	return
+
+def essentialCensus(max_tets):
+	t0 = time.time()
+	for i in range(len(snappy.OrientableCuspedCensus)):
+		print(f'Searching manifold {i}. Time since start: {round((time.time() - t0) / 60, 2)} minutes.')
+		M = snappy.OrientableCuspedCensus[i]
+		graphEssentialSearch(M.triangulation_isosig(decorated=False), max_tets, False, 'census-'+str(max_tets)+'-tets')
+
+
+def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
+	"""
+	Perform 'pseudo-geometric' moves, i.e. perform moves while tracking the shape
+	parameters, even if the shape parameters are flat.
+	Graph output.
+	Assumes input is pseudogeometric.
+	"""
+
+	if verbose:
+		print(f"Searching {sig}...")
+	t0 = time.time()
+
+	T = regina.Triangulation3.fromIsoSig(sig)
+	T.orient()
+	M = snappy.Manifold(T)
+
+	### field may not be found -- to fix later
+	L = M.tetrahedra_field_gens()
+	try:
+		shapes = L.find_field(100,10)[2]
+	except:
+		print("Could not find field: falling back to floating point")
+		shapes = M.tetrahedra_shapes(part='rect')
+	
+
+	flat = [sig]
+	notflat = []
+	edges = []
+
+	f = open(f'{directory}/{sig}-flat-nodes.csv', "w")
+	f.write(f'id,oriented,tetrahedra\n{sig},1,{T.countTetrahedra()}\n')
+	f.close()
+	f = open(f'{directory}/{sig}-flat-edges.csv', "w")
+	# labeling edge with #tet - index to look for repeated patterns!
+	f.write('target,source,label\n')
+	f.close()
+
+	# TODO : [ (Triangulation, [Shapes], index, dimension) ]
+	TODO = [(T, shapes, i, 2) for i in range(T.countTriangles())] + [(T, shapes, i, 1) for i in range(T.countEdges())]
+
+	while len(TODO) > 0:
+		T, shapes, i, d = TODO.pop(0)
+		Tsig = T.isoSig()
+
+		# always work on a copy
+		S = regina.Triangulation3(T)
+		shapes2 = shapes.copy()
+
+		if d == 1: # 3-2 move
+			success, newT, newShapes, oriented = gm.threeTwoMove(S, shapes2, i)
+
+		elif d == 2: # 2-3 move
+			success, newT, newShapes, oriented = gm.twoThreeMove(S, shapes2, i)
+
+		if success:
+			newSig = newT.isoSig()
+			if oriented > -1: # if flat or geometric
+				if not newSig in flat: #if we haven't seen it before
+					# record new triangulation sig
+					flat.append(newSig)
+					edges.append((Tsig, newSig))
+					f = open(f'{directory}/{sig}-flat-nodes.csv', "a")
+					f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
+					f.close()
+
+					# add neighbors to queue
+					TODO.extend([(newT, newShapes, j, 1) for j in range(newT.countEdges())])
+					if newT.countTetrahedra() < max_tets: # don't go up if you're at max tetrahedra
+						TODO.extend([(newT, newShapes, j, 2) for j in range(newT.countTriangles())])
+				else:
+					if (Tsig, newSig) in edges or (newSig, Tsig) in edges: # check so we can record edges later
+						continue #here is why we don't loop (we are backtracking a little)
+					
+			else: # if negatively oriented or inessential
+				if not newSig in notflat: #if we haven't seen it before
+					notflat.append(newSig)
+					edges.append((Tsig, newSig))
+					f = open(f'{directory}/{sig}-flat-nodes.csv', "a")
+					f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
+					f.close()
+				else:
+					if (Tsig, newSig) in edges or (newSig, Tsig) in edges: # check so we can record edges later
+						continue #here is why we don't loop (we are backtracking a little)
+
+			
+			f = open(f'{directory}/{sig}-flat-edges.csv', "a")
+			# labeling edge with #tet - index to look for repeated patterns!
+			f.write(f'{newSig},{T.isoSig()},{'Edge: ' if d==1 else 'Face: '}{T.countTriangles() - i}\n')
+			f.close()
+				
+			
+						
+	if verbose:
+		print(f'Number of pseudogeometric triangulations: {len(flat)}')
+		print(f'Number of non-pseudogeometric triangulations: {len(notflat)}')
+		print(f'Total: {len(flat) + len(notflat)} triangulations in {round(time.time() - t0, 2)} seconds.')
+
+	return
 
 
 def bigSearch(n, depth):
@@ -180,6 +399,7 @@ def bigSearch(n, depth):
 def checkRec(tri, shapes):
 	"""
 	check for Dadd Duan recursive gadget
+	Warning: not well-tested. Use at own risk0
 	"""
 	found_combinatorial = False
 	combin_at = []

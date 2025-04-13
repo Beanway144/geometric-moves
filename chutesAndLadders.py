@@ -3,6 +3,8 @@ import geometricmoves as gm
 import geometricsearch as gs
 import time
 
+### THIS FILE IS OLD, MAY NOT WORK
+
 VERIFY = True
 
 def pseudoGeometricSearch(sig, MAX_DEPTH):
