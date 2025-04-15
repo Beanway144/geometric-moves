@@ -304,6 +304,12 @@ def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
 	T.orient()
 	M = snappy.Manifold(T)
 
+	name = ''
+	l = M.identify()
+	if l:
+		name = l[0]
+
+
 	### field may not be found -- to fix later
 	L = M.tetrahedra_field_gens()
 	try:
@@ -317,10 +323,10 @@ def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
 	notflat = []
 	edges = []
 
-	f = open(f'{directory}/{sig}-flat-nodes.csv', "w")
+	f = open(f'{directory}/{name}-({sig})-pseudogeometric-nodes.csv', "w")
 	f.write(f'id,oriented,tetrahedra\n{sig},1,{T.countTetrahedra()}\n')
 	f.close()
-	f = open(f'{directory}/{sig}-flat-edges.csv', "w")
+	f = open(f'{directory}/{name}-({sig})-pseudogeometric-edges.csv', "w")
 	# labeling edge with #tet - index to look for repeated patterns!
 	f.write('target,source,label\n')
 	f.close()
@@ -349,7 +355,7 @@ def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
 					# record new triangulation sig
 					flat.append(newSig)
 					edges.append((Tsig, newSig))
-					f = open(f'{directory}/{sig}-flat-nodes.csv', "a")
+					f = open(f'{directory}/{name}-({sig})-pseudogeometric-nodes.csv', "a")
 					f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
 					f.close()
 
@@ -365,7 +371,7 @@ def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
 				if not newSig in notflat: #if we haven't seen it before
 					notflat.append(newSig)
 					edges.append((Tsig, newSig))
-					f = open(f'{directory}/{sig}-flat-nodes.csv', "a")
+					f = open(f'{directory}/{name}-({sig})-pseudogeometric-nodes.csv', "a")
 					f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
 					f.close()
 				else:
@@ -373,7 +379,7 @@ def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
 						continue #here is why we don't loop (we are backtracking a little)
 
 			
-			f = open(f'{directory}/{sig}-flat-edges.csv', "a")
+			f = open(f'{directory}/{name}-({sig})-pseudogeometric-edges.csv', "a")
 			# labeling edge with #tet - index to look for repeated patterns!
 			f.write(f'{newSig},{T.isoSig()},{'Edge: ' if d==1 else 'Face: '}{T.countTriangles() - i}\n')
 			f.close()

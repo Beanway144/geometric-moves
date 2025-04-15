@@ -78,17 +78,10 @@ def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
     tri2 = regina.Triangulation3(tri)  ## make a copy
     tri2.pachner(tri2.triangle(face_num))
 
-    ### We have to implement twoThreeMove ourselves. e.g. we do a 2-3 move to canonical fig 8 knot complement triangulation. 
-    ### All of the original tetrahedra are removed. I don't see any way to carry the angle structure through without knowing
-    ### exactly how Ben's implementation works.
-
     ## record the tetrahedra and gluings adjacent to tet0 and tet1
 
     tets = [tet0, tet1]
     vertices = [vertices0, vertices1]
-
-    # print('2-3 vertices signs')
-    # print([v.sign() for v in vertices])
 
     gluings = [] 
     for i in range(2):
@@ -138,23 +131,6 @@ def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
     ###                   \|/                                       \|/
     ###                    *                                         *
 
-
-    # permutations taking the vertices for a face of the 3-tet ball to the 
-    # vertices of the same face for the 2-tet ball
-
-    # these should be even in order to preserve orientability.
-    # exactly one of vertices[0] and vertices[1] is even, but it seems to depend on the face.
-
-    # perms = [[regina.Perm4( vertices[0][3], vertices[0][0], vertices[0][1], vertices[0][2] ),   ### opposite v00
-    #           regina.Perm4( vertices[0][3], vertices[0][1], vertices[0][2], vertices[0][0] ),   ### opposite v01
-    #           regina.Perm4( vertices[0][3], vertices[0][2], vertices[0][0], vertices[0][1] )    ### opposite v02
-    #           ],  
-    #          [regina.Perm4( vertices[1][0], vertices[1][3], vertices[1][1], vertices[1][2] ),   ### opposite v10
-    #           regina.Perm4( vertices[1][1], vertices[1][3], vertices[1][2], vertices[1][0] ),   ### opposite v11
-    #           regina.Perm4( vertices[1][2], vertices[1][3], vertices[1][0], vertices[1][1] )    ### opposite v12
-    #           ]
-    #         ]
-
     perms = [[vertices[0] * regina.Perm4( 3,0,1,2 ),   ### opposite v00
               vertices[0] * regina.Perm4( 3,1,2,0 ),   ### opposite v01
               vertices[0] * regina.Perm4( 3,2,0,1 )    ### opposite v02
@@ -167,12 +143,6 @@ def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
     flip = perms[0][0].sign() == -1
     if flip:  #then all of the signs are wrong, switch 0 and 1 on input
         perms = [[p * regina.Perm4( 1,0,2,3 ) for p in a] for a in perms]
-    #     print('flip')
-    # else:
-    #     print('no flip')
-
-    # print('2-3 perms signs')
-    # print([[p.sign() for p in a] for a in perms])
 
     for i in range(2):
         for j in range(3):
@@ -230,7 +200,7 @@ def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
     shapes.extend([new_shape0, new_shape1, new_shape2])
 
     # CHECK FOR INESSENTIAL [shape orientation := -2]
-    if (new_shape0 * new_shape1 == 1) or (new_shape1 * new_shape2 == 1) or (new_shape2 * new_shape0 == 1): 
+    if new_shape0 == 1 or new_shape1 == 1 or new_shape2 == 1: 
         return (True, tri, shapes, -2)
 	
     return (True, tri, shapes, shapeOrientation(shapes))    
@@ -311,22 +281,6 @@ def threeTwoMove(tri, shapes, edge_num):
     ###                   \|/                                       \|/
     ###                    *                                         *
 
-    # permutations taking the vertices for a face of the 2-tet ball to the 
-    # vertices of the same face for the 3-tet ball
-
-    # these should be even in order to preserve orientability.
-
-    # perms = [[regina.Perm4( vertices[0][0], vertices[0][2], vertices[0][3], vertices[0][1] ),   ### opposite v00
-    #           regina.Perm4( vertices[0][1], vertices[0][3], vertices[0][2], vertices[0][0] )    ### opposite v01
-    #           ],
-    #          [regina.Perm4( vertices[1][3], vertices[1][0], vertices[1][2], vertices[1][1] ),   ### opposite v10
-    #           regina.Perm4( vertices[1][3], vertices[1][2], vertices[1][1], vertices[1][0] )    ### opposite v11
-    #           ],
-    #          [regina.Perm4( vertices[2][2], vertices[2][3], vertices[2][0], vertices[2][1] ),   ### opposite v20
-    #           regina.Perm4( vertices[2][2], vertices[2][1], vertices[2][3], vertices[2][0] )    ### opposite v21
-    #           ]
-    #         ]
-
     perms = [[vertices[0] * regina.Perm4( 0, 2, 3, 1 ),   ### opposite v00
               vertices[0] * regina.Perm4( 1, 3, 2, 0 )    ### opposite v01
               ],
@@ -384,10 +338,7 @@ def threeTwoMove(tri, shapes, edge_num):
     z = shapes[tet_nums[1]]
     w = shapes[tet_nums[2]]
     new_shape0 = edgeParameter(vertices[0][1], vertices[0][3], u) * edgeParameter(vertices[1][1], vertices[1][2], z)
-    new_shape1 = edgeParameter(vertices[0][0], vertices[0][2], u) * edgeParameter(vertices[2][0], vertices[2][3], w) 
-
-    #for some reason, new_shape1 needs to be z-primed
-    # new_shape1 = 1/(1-new_shape1)
+    new_shape1 = edgeParameter(vertices[0][0], vertices[0][2], u) * edgeParameter(vertices[2][0], vertices[2][3], w)
 
     tet_nums.sort()
     shapes.pop(tet_nums[2])
