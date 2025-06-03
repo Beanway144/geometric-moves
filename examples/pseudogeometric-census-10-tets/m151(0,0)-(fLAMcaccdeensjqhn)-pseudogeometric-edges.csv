@@ -1,0 +1,27 @@
+target,source,label
+gLLAQcceeeffubmudhj,fLAMcaccdeensjqhn,Face: 9
+gLLQPacdeeffnkdxcpw,fLAMcaccdeensjqhn,Face: 6
+hLLMAkbcdeffggebbmtnmj,gLLAQcceeeffubmudhj,Face: 11
+hLLAMkbdedfgfgdwaslqkw,gLLAQcceeeffubmudhj,Face: 9
+hLLMAkbcdeffggebbmtnmj,gLLQPacdeeffnkdxcpw,Face: 11
+gLLQPacdeeffnkdxcpw,hLLMAkbcdeffggebbmtnmj,Edge: 11
+iLLAPMcbcedfgfhhtsxfjjjxr,hLLAMkbdedfgfgdwaslqkw,Face: 9
+jLLPwAQccdfehgihiqffaaaahns,iLLAPMcbcedfgfhhtsxfjjjxr,Face: 8
+iLLAPPcbcedfghghtsxfjjxjr,jLLPwAQccdfehgihiqffaaaahns,Edge: 11
+hLLAAkaddeefggjuapwoxr,iLLAPPcbcedfghghtsxfjjxjr,Edge: 11
+gLLAQadedeffjulhvjn,hLLAAkaddeefggjuapwoxr,Edge: 11
+fLLQcacdedejbqxwk,gLLAQadedeffjulhvjn,Edge: 7
+hLLLQkadeegfggjuxvnvoc,gLLAQadedeffjulhvjn,Face: 11
+hLLLQkadeegfggjuxvwvoc,gLLAQadedeffjulhvjn,Face: 9
+gLLAQadedeffjuldvjn,fLLQcacdedejbqxwk,Face: 9
+gLLAQadedeffjulpvjn,fLLQcacdedejbqxwk,Face: 7
+gLLAQadedeffjuldvjn,hLLLQkadeegfggjuxvnvoc,Edge: 10
+gLLAQadedeffjulpvjn,hLLLQkadeegfggjuxvwvoc,Edge: 9
+hLLLQkadeegfggjuxvfvoc,gLLAQadedeffjuldvjn,Face: 11
+hLLLQkadeegfggjuxvnvoc,gLLAQadedeffjuldvjn,Face: 9
+hLLLQkadeegfggjuxvfvoc,gLLAQadedeffjulpvjn,Face: 10
+hLLLQkadeegfggjuxvwvoc,gLLAQadedeffjulpvjn,Face: 9
+gLLAQadedeffjulpvjn,hLLLQkadeegfggjuxvfvoc,Edge: 11
+iLLAMMcbdedfgghhevisleukr,hLLLQkadeegfggjuxvfvoc,Face: 6
+hLLMMkbeefefggxxitxhcn,iLLAMMcbdedfgghhevisleukr,Edge: 10
+iLLAwQcbdedfgghhevdsadijj,hLLMMkbeefefggxxitxhcn,Face: 1

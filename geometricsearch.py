@@ -44,10 +44,10 @@ def geometricSearch(sig, max_tets, verify=False, verbose=True, census=False):
 		shapes2 = shapes.copy()
 
 		if d == 1: # 3-2 move
-			success, newT, newShapes, oriented = gm.threeTwoMove(S, shapes2, i)
+			success, newT, newShapes, (oriented, (flat_count, negative_count)) = gm.threeTwoMove(S, shapes2, i)
 
 		elif d == 2: # 2-3 move
-			success, newT, newShapes, oriented = gm.twoThreeMove(S, shapes2, i)
+			success, newT, newShapes, (oriented, (flat_count, negative_count)) = gm.twoThreeMove(S, shapes2, i)
 
 		if success:
 			newSig = newT.isoSig()
@@ -81,7 +81,6 @@ def geometricSearch(sig, max_tets, verify=False, verbose=True, census=False):
 			tf, shapes = M.verify_hyperbolicity()
 			L = M.tetrahedra_field_gens()
 			shapes = L.find_field(100,10)[2]
-			# pp_copmare_shapes(shapes, geomshapes[i])
 			if not tf:
 				print(f"Geometric not actually geometric: {M.triangulation_isosig(decorated=False)}")
 				assert False
@@ -94,7 +93,7 @@ def geometricSearch(sig, max_tets, verify=False, verbose=True, census=False):
 		print(f"Done! Verified {len(geometric) + len(nongeometric)} triangulations in {round(time.time() - t1, 2)} seconds.")
 	return geometric
 
-def graphGeometricSearch(sig, max_tets, verbose=True, geometric_only=False):
+def graphGeometricSearch(sig, max_tets, verbose=True, geometric_only=False, directory='graphs'):
 	"""
 	Perform geometric pachner moves until no longer possible
 	Assumes sig is geometric
@@ -123,10 +122,10 @@ def graphGeometricSearch(sig, max_tets, verbose=True, geometric_only=False):
 	geometric = [sig]
 	nongeometric = []
 
-	f = open(f'graphs/{sig}-nodes.csv', "w")
+	f = open(f'{directory}/{sig}-geometric-nodes.csv', "w")
 	f.write(f'id,oriented,tetrahedra\n{sig},1,{T.countTetrahedra()}\n')
 	f.close()
-	f = open(f'graphs/{sig}-edges.csv', "w")
+	f = open(f'{directory}/{sig}-geometric-edges.csv', "w")
 	# labeling edge with #tet - index to look for repeated patterns!
 	f.write('target,source,label\n')
 	f.close()
@@ -141,10 +140,10 @@ def graphGeometricSearch(sig, max_tets, verbose=True, geometric_only=False):
 		shapes2 = shapes.copy()
 
 		if d == 1: # 3-2 move
-			success, newT, newShapes, oriented = gm.threeTwoMove(S, shapes2, i)
+			success, newT, newShapes, (oriented, (flat_count, negative_count)) = gm.threeTwoMove(S, shapes2, i)
 
 		elif d == 2: # 2-3 move
-			success, newT, newShapes, oriented = gm.twoThreeMove(S, shapes2, i)
+			success, newT, newShapes, (oriented, (flat_count, negative_count)) = gm.twoThreeMove(S, shapes2, i)
 
 		if success:
 			newSig = newT.isoSig()
@@ -165,10 +164,10 @@ def graphGeometricSearch(sig, max_tets, verbose=True, geometric_only=False):
 			if geometric_only:
 				if oriented <= 0:
 					continue
-			f = open(f'graphs/{sig}-nodes.csv', "a")
+			f = open(f'{directory}/{sig}-geometric-nodes.csv', "a")
 			f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
 			f.close()
-			f = open(f'graphs/{sig}-edges.csv', "a")
+			f = open(f'{directory}/{sig}-geometric-edges.csv', "a")
 			# labeling edge with #tet - index to look for repeated patterns!
 			f.write(f'{newSig},{T.isoSig()},{'Edge: ' if d==1 else 'Face: '}{T.countTriangles() - i}\n')
 			f.close()
@@ -211,7 +210,7 @@ def graphEssentialSearch(sig, max_tets, verbose=True, directory='graphs'):
 	edges = []
 
 	f = open(f'{directory}/{sig}-essential-nodes.csv', "w")
-	f.write(f'id,oriented,tetrahedra\n{sig},1,{T.countTetrahedra()}\n')
+	f.write(f'id,oriented,tetrahedra,flat count,negative count\n{sig},1,{T.countTetrahedra()},0,0\n')
 	f.close()
 	f = open(f'{directory}/{sig}-essential-edges.csv', "w")
 	# labeling edge with #tet - index to look for repeated patterns!
@@ -230,10 +229,10 @@ def graphEssentialSearch(sig, max_tets, verbose=True, directory='graphs'):
 		shapes2 = shapes.copy()
 
 		if d == 1: # 3-2 move
-			success, newT, newShapes, oriented = gm.threeTwoMove(S, shapes2, i)
+			success, newT, newShapes, (oriented, (flat_count, negative_count)) = gm.threeTwoMove(S, shapes2, i)
 
 		elif d == 2: # 2-3 move
-			success, newT, newShapes, oriented = gm.twoThreeMove(S, shapes2, i)
+			success, newT, newShapes, (oriented, (flat_count, negative_count)) = gm.twoThreeMove(S, shapes2, i)
 
 		if success:
 			newSig = newT.isoSig()
@@ -243,8 +242,12 @@ def graphEssentialSearch(sig, max_tets, verbose=True, directory='graphs'):
 					essential.append(newSig)
 					edges.append((Tsig, newSig))
 					f = open(f'{directory}/{sig}-essential-nodes.csv', "a")
-					f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
+					f.write(f'{newSig},{oriented},{newT.countTetrahedra()},{flat_count},{negative_count}\n')
 					f.close()
+
+					# # DEBUG
+					# if oriented == 1: #print shapes if geometric
+					# 	print(f'{newSig} ||| {newShapes}')
 
 					# add neighbors to queue
 					TODO.extend([(newT, newShapes, j, 1) for j in range(newT.countEdges())])
@@ -259,7 +262,7 @@ def graphEssentialSearch(sig, max_tets, verbose=True, directory='graphs'):
 					inessential.append(newSig)
 					edges.append((Tsig, newSig))
 					f = open(f'{directory}/{sig}-essential-nodes.csv', "a")
-					f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
+					f.write(f'{newSig},{oriented},{newT.countTetrahedra()},{flat_count},{negative_count}\n')
 					f.close()
 				else:
 					if (Tsig, newSig) in edges or (newSig, Tsig) in edges: # check so we can record edges later
@@ -288,11 +291,12 @@ def essentialCensus(max_tets):
 		graphEssentialSearch(M.triangulation_isosig(decorated=False), max_tets, False, 'census-'+str(max_tets)+'-tets')
 
 
-def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
+def graphPseudogeometricSearch(sig, max_tets, verbose=True, record_nons=True, directory='graphs'):
 	"""
 	Perform 'pseudo-geometric' moves, i.e. perform moves while tracking the shape
 	parameters, even if the shape parameters are flat.
 	Graph output.
+	If record_nons is true, it will graph the non-pseudogeometric triangulations.
 	Assumes input is pseudogeometric.
 	"""
 
@@ -324,7 +328,7 @@ def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
 	edges = []
 
 	f = open(f'{directory}/{name}-({sig})-pseudogeometric-nodes.csv', "w")
-	f.write(f'id,oriented,tetrahedra\n{sig},1,{T.countTetrahedra()}\n')
+	f.write(f'id,oriented,tetrahedra,flat count,negative count\n{sig},1,{T.countTetrahedra()},0,0\n')
 	f.close()
 	f = open(f'{directory}/{name}-({sig})-pseudogeometric-edges.csv', "w")
 	# labeling edge with #tet - index to look for repeated patterns!
@@ -343,10 +347,10 @@ def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
 		shapes2 = shapes.copy()
 
 		if d == 1: # 3-2 move
-			success, newT, newShapes, oriented = gm.threeTwoMove(S, shapes2, i)
+			success, newT, newShapes, (oriented, (flat_count, negative_count)) = gm.threeTwoMove(S, shapes2, i)
 
 		elif d == 2: # 2-3 move
-			success, newT, newShapes, oriented = gm.twoThreeMove(S, shapes2, i)
+			success, newT, newShapes, (oriented, (flat_count, negative_count)) = gm.twoThreeMove(S, shapes2, i)
 
 		if success:
 			newSig = newT.isoSig()
@@ -356,7 +360,7 @@ def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
 					flat.append(newSig)
 					edges.append((Tsig, newSig))
 					f = open(f'{directory}/{name}-({sig})-pseudogeometric-nodes.csv', "a")
-					f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
+					f.write(f'{newSig},{oriented},{newT.countTetrahedra()},{flat_count},{negative_count}\n')
 					f.close()
 
 					# add neighbors to queue
@@ -366,23 +370,26 @@ def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
 				else:
 					if (Tsig, newSig) in edges or (newSig, Tsig) in edges: # check so we can record edges later
 						continue #here is why we don't loop (we are backtracking a little)
+				f = open(f'{directory}/{name}-({sig})-pseudogeometric-edges.csv', "a")
+				# labeling edge with #tet - index to look for repeated patterns!
+				f.write(f'{newSig},{T.isoSig()},{'Edge: ' if d==1 else 'Face: '}{T.countTriangles() - i}\n')
+				f.close()
 					
 			else: # if negatively oriented or inessential
-				if not newSig in notflat: #if we haven't seen it before
-					notflat.append(newSig)
-					edges.append((Tsig, newSig))
-					f = open(f'{directory}/{name}-({sig})-pseudogeometric-nodes.csv', "a")
-					f.write(f'{newSig},{oriented},{newT.countTetrahedra()}\n')
+				if record_nons:
+					if not newSig in notflat: #if we haven't seen it before
+						notflat.append(newSig)
+						edges.append((Tsig, newSig))
+						f = open(f'{directory}/{name}-({sig})-pseudogeometric-nodes.csv', "a")
+						f.write(f'{newSig},{oriented},{newT.countTetrahedra()},{flat_count},{negative_count}\n')
+						f.close()
+					else:
+						if (Tsig, newSig) in edges or (newSig, Tsig) in edges: # check so we can record edges later
+							continue #here is why we don't loop (we are backtracking a little)
+					f = open(f'{directory}/{name}-({sig})-pseudogeometric-edges.csv', "a")
+					# labeling edge with #tet - index to look for repeated patterns!
+					f.write(f'{newSig},{T.isoSig()},{'Edge: ' if d==1 else 'Face: '}{T.countTriangles() - i}\n')
 					f.close()
-				else:
-					if (Tsig, newSig) in edges or (newSig, Tsig) in edges: # check so we can record edges later
-						continue #here is why we don't loop (we are backtracking a little)
-
-			
-			f = open(f'{directory}/{name}-({sig})-pseudogeometric-edges.csv', "a")
-			# labeling edge with #tet - index to look for repeated patterns!
-			f.write(f'{newSig},{T.isoSig()},{'Edge: ' if d==1 else 'Face: '}{T.countTriangles() - i}\n')
-			f.close()
 				
 			
 						
@@ -392,6 +399,13 @@ def graphPseudogeometricSearch(sig, max_tets, verbose=True, directory='graphs'):
 		print(f'Total: {len(flat) + len(notflat)} triangulations in {round(time.time() - t0, 2)} seconds.')
 
 	return
+
+def pseudogeometricCensus(max_tets, start, end):
+	t0 = time.time()
+	for i in range(start, end):
+		print(f'Searching manifold {i}. Time since start: {round((time.time() - t0) / 60, 2)} minutes.')
+		M = snappy.OrientableCuspedCensus[i]
+		graphPseudogeometricSearch(M.triangulation_isosig(decorated=False), max_tets, False, False, f'pseudogeometric-census-{max_tets}-tets')
 
 
 def bigSearch(n, depth):
@@ -500,9 +514,9 @@ def recSearch(sig, max_tets, verbose=True):
 		shapes2 = shapes.copy()
 
 		if d == 1: # 3-2 move
-			success, newT, newShapes, geom = gm.threeTwoMove(S, shapes2, i)
+			success, newT, newShapes, (geom, (flat_count, negative_count)) = gm.threeTwoMove(S, shapes2, i)
 		elif d == 2: # 2-3 move
-			success, newT, newShapes, geom = gm.twoThreeMove(S, shapes2, i)
+			success, newT, newShapes, (geom, (flat_count, negative_count)) = gm.twoThreeMove(S, shapes2, i)
 
 		if success:
 			newSig = newT.isoSig()
@@ -555,7 +569,7 @@ def bigSearchRec(n, depth, file):
 			print("Nothing found.")
 		print(f'{i}----------------------------------------------')
 
-def pp_copmare_shapes(shapes1, shapes2):
+def pp_compare_shapes(shapes1, shapes2):
 	print('--------------------------------------------')
 	if len(shapes1) != len(shapes2):
 		print('Error: Shape lists not same length!')

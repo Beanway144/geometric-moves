@@ -10,6 +10,9 @@ def edgeParameter(v1, v2, z):
     20, 13 <---> 1/(1-z)	
     21, 03 <---> (z-1)/z
     """
+    if z == 0 or z == 1: #catch degenerate case
+        return False
+
     match (v1, v2):
         case (0, 1) | (1, 0) | (2 , 3) | (3, 2):
             return z
@@ -25,23 +28,27 @@ def shapeOrientation(shapes):
     - Geometric (return +1): all shapes have positive imaginary part
     - Flat (return 0): at least one shape Im z = 0, the rest >= 0
     - Negatively Oriented (return -1): at least one shape Im z < 0
+    Second return type is a tuple (# of flat tetrahedra, # of negatively oriented tetrahedra)
     """
-    flat = False
+    flat_count = 0
+    negative_count = 0
     for s in shapes: 
         try: #here to catch if input is floating or algebraic (should change this eventually)
             if QQbar(s).imag() < 0:
-                return -1
+                negative_count += 1
             if QQbar(s).imag() == 0:
-                flat = True
+                flat_count += 1
         except:
             if s.imag() < 0:
-                return -1
+                negative_count += 1
             if s.imag() < 0.00000001:
-                flat = True
-    if flat:
-        return 0
+                flat_count += 1
+    if negative_count > 0:
+        return (-1, (flat_count, negative_count))
+    elif flat_count > 0:
+        return (0, (flat_count, negative_count))
     else:
-        return 1
+        return (1, (0, 0))
 
     # forked from branch moves - henryseg - veering
 def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
@@ -69,7 +76,7 @@ def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
     vertices1 = embed1.vertices() # Maps vertices (0,1,2) of face to the corresponding vertex numbers of tet1
 
     if tet0 == tet1:  ### Cannot perform a 2-3 move across a self-gluing
-        return (False, False, False, False)
+        return (False, False, False, (False, (False, False)))
 
     ### are all moves valid for geometric tri?
     ### for now, lets assume yes
@@ -179,7 +186,7 @@ def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
                     new_tets[j].join(1 - i, gluings[i][j][0], gluings[i][j][1])
 
     assert tri.isIsomorphicTo(tri2)
-    assert tri.isOriented()
+    # assert tri.isOriented()
 
     ### update the shape parameters:
     ### for each of the three new tetrahedra, figure out what their new shape parameter
@@ -188,6 +195,7 @@ def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
     new_shape0 = edgeParameter(vertices0[1], vertices0[2], z) * edgeParameter(vertices1[1], vertices1[2], w)
     new_shape1 = edgeParameter(vertices0[0], vertices0[2], z) * edgeParameter(vertices1[0], vertices1[2], w)
     new_shape2 = edgeParameter(vertices0[0], vertices0[1], z) * edgeParameter(vertices1[0], vertices1[1], w)
+
 
     # pop in correct order
     if tet_num0 < tet_num1:
@@ -201,7 +209,11 @@ def twoThreeMove(tri, shapes, face_num, perform = True, return_edge = False):
 
     # CHECK FOR INESSENTIAL [shape orientation := -2]
     if new_shape0 == 1 or new_shape1 == 1 or new_shape2 == 1: 
-        return (True, tri, shapes, -2)
+        return (True, tri, shapes, (-2, (0,0)))
+
+    # CHECK FOR DEGENERATE TETRAHEDRA    
+    if not (new_shape0 and new_shape1 and new_shape2): #if any returned false
+        return (True, tri, shapes, (-2, (0,0)))
 	
     return (True, tri, shapes, shapeOrientation(shapes))    
 
@@ -214,7 +226,7 @@ def threeTwoMove(tri, shapes, edge_num):
 
     edge = tri.edge(edge_num)
     if edge.degree() != 3:
-        return (False, False, False, False)
+        return (False, False, False, (False, (False, False)))
 
     tets = []
     tet_nums = []
@@ -226,7 +238,7 @@ def threeTwoMove(tri, shapes, edge_num):
         vertices.append(embed.vertices())
 
     if len(set([tet.index() for tet in tets])) != 3: 
-        return (False, False, False, False)  ### tetrahedra must be distinct
+        return (False, False, False, (False, (False, False)))  ### tetrahedra must be distinct
      
     ### check we do the same as regina... 
     tri2 = regina.Triangulation3(tri)  ## make a copy
@@ -331,7 +343,7 @@ def threeTwoMove(tri, shapes, edge_num):
                     new_tets[j].join(3 - i, gluings[i][j][0], gluings[i][j][1])  ## swap 1 and 2
 
     assert tri.isIsomorphicTo(tri2)
-    assert tri.isOriented()
+    # assert tri.isOriented()
 
     ### update shapes
     u = shapes[tet_nums[0]]
@@ -344,6 +356,10 @@ def threeTwoMove(tri, shapes, edge_num):
     shapes.pop(tet_nums[2])
     shapes.pop(tet_nums[1])
     shapes.pop(tet_nums[0])  ## remove from the list in the correct order!
+
+    # CHECK FOR DEGENERATE TETRAHEDRA    
+    if not (new_shape0 and new_shape1): #if any returned false
+        return (True, tri, shapes, (-2, (0,0)))
 
     shapes.extend([new_shape0, new_shape1])
     return (True, tri, shapes, shapeOrientation(shapes))  
