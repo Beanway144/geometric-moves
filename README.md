@@ -1,4 +1,4 @@
-# Geometric Moves
+# Geometric Bistellar Flips ![two truncated tetrahedra](./assets/two-tets.jpeg)
 This is a repository of scripts that search through geometric triangulations of cusped hyperbolic 3-manifolds.
 
 - `geometricmoves.py`  contains functions for applying local (2-3 or 3-2) moves to an essential triangulation, updating the geometric shapes and the triangulation.
@@ -9,4 +9,4 @@ This is a repository of scripts that search through geometric triangulations of 
 - `testmoves.py` contains functions to test geometric moves.
 
 + recursion-gadget
-- `recursiongadget.py` contains scripts for searching for 'recursion gadgets', which are substructures along with a sequence of local moves on the substructure which result in a new geometric triangulation containing the substructure. The existence of one implies the existence of infinitely many geometric triangulations.
+- `recursiongadget.py` contains scripts for searching for 'recursion gadgets', which are substructures along with a sequence of local moves on the substructure which result in a new geometric triangulation containing the substructure. The existence of one implies the existence of infinitely many geometric triangulations, see https://arxiv.org/abs/1508.04942.
