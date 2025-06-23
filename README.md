@@ -1,4 +1,4 @@
-# Geometric Bistellar Flips <img src='assets/two-tets.jpeg' alt='two truncated tetrahedra' width='100'/>
+# Geometric Bistellar Flips &nbsp;&nbsp; <img src='assets/two-tets.jpeg' alt='two truncated tetrahedra' width='80'/>
 This is a repository of scripts that search through geometric triangulations of cusped hyperbolic 3-manifolds.
 
 - `geometricmoves.py`  contains functions for applying local (2-3 or 3-2) moves to an essential triangulation, updating the geometric shapes and the triangulation.
